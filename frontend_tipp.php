@@ -2,7 +2,7 @@
 /**
  * Project: LMOnext
  * Filename: addon/tipp/frontend_tipp.php
- * Fileversion: 0.10.0
+ * Fileversion: 0.11.0
  *
  * PHP version 8.2
  *
@@ -198,6 +198,40 @@ function tippIstAenderbar(?string $zeit, ?string $spieltagStart) : bool
     }
     $deadline = strtotime($bezug) - ($minuten * 60);
     return time() < $deadline;
+}
+
+/**
+ * Höchste Spieltagsnummer, die laut Einstellung "max. Anzahl Spieltage im
+ * Voraus tippen" (max_spieltage_voraus) aktuell getippt werden darf.
+ * Bezugspunkt ist der "aktuelle" Spieltag = der erste Spieltag, in dem noch
+ * mindestens eine Partie tippbar ist (Frist nicht abgelaufen). 0 = nur der
+ * aktuelle Spieltag, 1 = aktueller + 1 weiterer usw.
+ * Rückgabe null = keine Begrenzung ("unbegrenzt" oder kein offener Spieltag).
+ *
+ * @param array $allSpieltage Ergebnis von getAllSpieltage($ligaId)
+ */
+function tippMaxTippbarerSpieltag(array $allSpieltage) : ?int
+{
+    $voraus = getTippSetting('max_spieltage_voraus', 'unbegrenzt');
+    if ($voraus === 'unbegrenzt' || !ctype_digit($voraus)) {
+        return null;
+    }
+    usort($allSpieltage, static fn($a, $b) => (int)$a['nummer'] <=> (int)$b['nummer']);
+    foreach ($allSpieltage as $st) {
+        foreach (getSpieltagPartien((int)$st['id']) as $p) {
+            if (tippIstAenderbar($p['zeit'] ?? null, $st['start'] ?? null)) {
+                return (int)$st['nummer'] + (int)$voraus;
+            }
+        }
+    }
+    return null;
+}
+
+/** Darf der Spieltag mit dieser Nummer laut "Spieltage im Voraus" getippt werden? */
+function tippSpieltagFreigegeben(array $allSpieltage, int $spieltagNr) : bool
+{
+    $max = tippMaxTippbarerSpieltag($allSpieltage);
+    return $max === null || $spieltagNr <= $max;
 }
 
 // ── Tipps speichern ──────────────────────────────────────────────────────────

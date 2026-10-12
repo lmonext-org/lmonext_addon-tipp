@@ -209,6 +209,7 @@ return [
     'tf_tipp_naechster_tipper'   => 'Nächster Tipper',
     'tf_tipp_col_gesamtpunkte'   => 'Gesamtpunkte',
     'tf_tipp_spieltag_n'         => '{n}. Spieltag',
+    'tf_tipp_spieltag_gesperrt' => 'Dieser Spieltag ist noch nicht zum Tippen freigegeben (Einstellung „Spieltage im Voraus“).',
     'tf_tipp_speichern'        => 'Tipps speichern',
     'tf_tipp_err_nickname'     => 'Bitte einen gültigen Nickname angeben (max. 50 Zeichen).',
     'tf_tipp_err_email'        => 'Bitte eine gültige E-Mail-Adresse angeben.',

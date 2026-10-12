@@ -44,3 +44,17 @@ CHANGELOG.md des LMOnext-Kernprojekts unter den Abschnitten
   src/Addon/AddonManager.php 1.4.0). Betraf bisher keine sichtbare
   Funktion, wäre aber beim neuen Purge-Feature auf einen unvollständigen/
   falschen Cleanup hinausgelaufen.
+
+## Version 1.5.3
+
+- Bugfix: Die Admin-Einstellung "max. Anzahl Spieltage im Voraus tippen"
+  (max_spieltage_voraus) wurde zwar gespeichert, aber nirgends ausgewertet -
+  es konnten immer alle Spieltage bis zum letzten getippt werden. Jetzt
+  gilt: Bezugspunkt ist der aktuelle Spieltag (erster Spieltag mit noch
+  tippbaren Partien); 0 = nur dieser, 1 = dieser + 1 weiterer usw.,
+  "unbegrenzt" = keine Begrenzung. Spieltage außerhalb sind im Formular
+  gesperrt (mit Hinweis) und werden auch serverseitig beim Speichern
+  abgelehnt. Neue Funktionen tippMaxTippbarerSpieltag() und
+  tippSpieltagFreigegeben() in frontend_tipp.php 0.11.0,
+  view_tippspiel_frontend.php 1.20.3, neuer Sprachschlüssel
+  tf_tipp_spieltag_gesperrt. Nachtragen durch den Admin bleibt unberührt.

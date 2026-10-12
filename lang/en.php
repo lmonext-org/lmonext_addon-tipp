@@ -209,6 +209,7 @@ return [
     'tf_tipp_naechster_tipper'   => 'Next tipper',
     'tf_tipp_col_gesamtpunkte'   => 'Total points',
     'tf_tipp_spieltag_n'         => 'Matchday {n}',
+    'tf_tipp_spieltag_gesperrt' => 'This matchday is not yet open for tipping (setting "matchdays in advance").',
     'tf_tipp_speichern'        => 'Save tips',
     'tf_tipp_err_nickname'     => 'Please enter a valid nickname (max. 50 characters).',
     'tf_tipp_err_email'        => 'Please enter a valid email address.',

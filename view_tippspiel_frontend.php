@@ -2,7 +2,7 @@
 /**
  * Project: LMOnext
  * Filename: addon/tipp/view_tippspiel_frontend.php
- * Fileversion: 1.20.2
+ * Fileversion: 1.20.3
  *
  * PHP version 8.2
  *
@@ -71,7 +71,8 @@ function tippspielHandleRequest() : array
         if ($liga !== null && $tipper !== null) {
             $spieltage = getAllSpieltage($ligaId);
             $spieltag  = getSpieltagByNummer($spieltage, $spieltagNr);
-            if ($spieltag !== null) {
+            // "max. Anzahl Spieltage im Voraus tippen" auch serverseitig durchsetzen
+            if ($spieltag !== null && tippSpieltagFreigegeben($spieltage, $spieltagNr)) {
                 $partien = getSpieltagPartien((int)$spieltag['id']);
                 foreach ($partien as &$p) { $p['spieltag_start'] = $spieltag['start'] ?? null; }
                 unset($p);
@@ -601,7 +602,11 @@ function renderTippAbgabeView(array $state) : string
         $partien = getSpieltagPartien((int)$spieltag['id']);
         $abgaben = tippGetAbgabeFuerPartien((int)$tipper['id'], array_map(fn($p) => (int)$p['id'], $partien));
         $jokerZulassen = getTippSetting('joker_zulassen', '1') === '1';
+        $stFreigegeben = tippSpieltagFreigegeben($spieltage, $spieltagNr);
         ?>
+<?php if (!$stFreigegeben) { ?>
+  <p class="empty-msg"><?= h(tf('tf_tipp_spieltag_gesperrt')) ?></p>
+<?php } ?>
   <form method="post" action="<?= h(tippUrl('save')) ?>">
     <input type="hidden" name="liga_id" value="<?= $ligaId ?>">
     <input type="hidden" name="spieltag" value="<?= $spieltagNr ?>">
@@ -624,7 +629,7 @@ function renderTippAbgabeView(array $state) : string
         $heimName = $p['heim_name'] ?? $p['heim_label'] ?? '';
         $gastName = $p['gast_name'] ?? $p['gast_label'] ?? '';
         $abgabe = $abgaben[$pid] ?? null;
-        $aenderbar = tippIstAenderbar($p['zeit'] ?? null, $spieltag['start'] ?? null);
+        $aenderbar = $stFreigegeben && tippIstAenderbar($p['zeit'] ?? null, $spieltag['start'] ?? null);
         $ergHeim = $p['h_tore'] !== null ? (int)$p['h_tore'] : null;
         $ergGast = $p['g_tore'] !== null ? (int)$p['g_tore'] : null;
         $punkte = ($abgabe !== null) ? calculateTippPunkte((int)$abgabe['tipp_heim'], (int)$abgabe['tipp_gast'], $ergHeim, $ergGast, (bool)$abgabe['ist_joker']) : null;
