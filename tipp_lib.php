@@ -2,7 +2,7 @@
 /**
  * Project: LMOnext
  * Filename: addon/tipp/tipp_lib.php
- * Fileversion: 1.1.0
+ * Fileversion: 1.2.0
  *
  * PHP version 8.2
  *
@@ -917,4 +917,140 @@ function formatSpieleListe(array $spiele) : string
     } catch (Throwable) {
         return '';
     }
+}
+
+// ── Punkteberechnung (gemeinsam für Frontend und Admin-Auswertung) ───────────
+
+function calculateTippPunkte(int $tippHeim, int $tippGast, ?int $ergHeim, ?int $ergGast, bool $istJoker) : int
+{
+    if ($ergHeim === null || $ergGast === null) {
+        return 0; // Spiel noch nicht ausgewertet
+    }
+
+    $ergTendenz  = $ergHeim <=> $ergGast;   // -1 Auswärtssieg, 0 Unentschieden, 1 Heimsieg
+    $tippTendenz = $tippHeim <=> $tippGast;
+
+    $punkte = 0;
+
+    if ($tippHeim === $ergHeim && $tippGast === $ergGast) {
+        $punkte = (int)getTippSetting('pkt_ergebnis', '4');
+        if ($ergTendenz === 0) {
+            $punkte += (int)getTippSetting('pkt_unentschieden_bonus', '1');
+        }
+    } elseif ($tippTendenz === $ergTendenz) {
+        $tordiffGleich = ($tippHeim - $tippGast) === ($ergHeim - $ergGast);
+        if ($ergTendenz === 0) {
+            // Unentschieden-Tendenz richtig, aber nicht exaktes Ergebnis
+            $regel = getTippSetting('pkt_unentschieden_regel', 'nur_tendenz');
+            $punkte = (int)getTippSetting('pkt_tendenz', '2');
+            if ($regel === 'tendenz_plus_toranzahl' && ($tippHeim === $ergHeim || $tippGast === $ergGast)) {
+                $punkte += (int)getTippSetting('pkt_toranzahl', '1');
+            }
+        } elseif ($tordiffGleich) {
+            $punkte = (int)getTippSetting('pkt_tendenz_tordiff', '3');
+        } else {
+            $punkte = (int)getTippSetting('pkt_tendenz', '2');
+            $regel = getTippSetting('pkt_tendenz_toranzahl_regel', 'addieren');
+            if ($regel === 'addieren' && ($tippHeim === $ergHeim || $tippGast === $ergGast)) {
+                $punkte += (int)getTippSetting('pkt_toranzahl', '1');
+            }
+        }
+    } elseif ($tippHeim === $ergHeim || $tippGast === $ergGast) {
+        // Seitengetreuer Vergleich - siehe Projekt-Historie (1:2 bei 2:1 zählt NICHT)
+        $punkte = (int)getTippSetting('pkt_toranzahl', '1');
+    }
+
+    if ($istJoker && $punkte > 0) {
+        $multiplikator = (float)getTippSetting('joker_multiplikator', '2');
+        $punkte = (int)round($punkte * $multiplikator);
+    }
+
+    return $punkte;
+}
+
+// ── Admin-Auswertung ─────────────────────────────────────────────────────────
+
+/**
+ * Berechnet die Admin-Auswertung für eine Liga (optional nur ein Spieltag).
+ * Alles live aus den Rohdaten (wie die Frontend-Rangliste).
+ *
+ * @param int $spieltagNr 0 = alle Spieltage
+ * @return array{kopf:array,einzel:array,teams:array}
+ */
+function adminTippAuswertung(int $ligaId, int $spieltagNr = 0, string $teamSort = 'avg') : array
+{
+    $leer = ['kopf' => ['tipper' => 0, 'tipps' => 0, 'ausgewertet' => 0, 'partien' => 0, 'offen' => 0], 'einzel' => [], 'teams' => []];
+    ensureTippSchema();
+    $db = getDB();
+    try {
+        $par = [$ligaId];
+        $stFilter = '';
+        if ($spieltagNr > 0) { $stFilter = ' AND s.nummer = ?'; $par[] = $spieltagNr; }
+
+        $pq = $db->prepare('SELECT COUNT(*) AS n, SUM(p.h_tore IS NULL OR p.g_tore IS NULL) AS offen
+                              FROM ' . tbl('liga_partien') . ' p JOIN ' . tbl('liga_spieltage') . ' s ON s.id = p.spieltag_id
+                             WHERE s.liga_id = ?' . $stFilter);
+        $pq->execute($par);
+        $pr = $pq->fetch();
+
+        $q = $db->prepare('SELECT tt.tipper_id, u.nickname, u.team_id, t.name AS team_name,
+                                  tt.tipp_heim, tt.tipp_gast, tt.ist_joker, p.h_tore, p.g_tore
+                             FROM ' . tbl('tipp_tipp') . ' tt
+                             JOIN ' . tbl('tipp_user') . ' u ON u.id = tt.tipper_id
+                        LEFT JOIN ' . tbl('tipp_team') . ' t ON t.id = u.team_id
+                             JOIN ' . tbl('liga_partien') . ' p ON p.id = tt.partie_id
+                             JOIN ' . tbl('liga_spieltage') . ' s ON s.id = p.spieltag_id
+                            WHERE s.liga_id = ? AND tt.tipp_heim IS NOT NULL AND tt.tipp_gast IS NOT NULL' . $stFilter);
+        $q->execute($par);
+        $rows = $q->fetchAll();
+    } catch (Throwable) {
+        return $leer;
+    }
+
+    $einzel = [];
+    $kopf = ['tipper' => 0, 'tipps' => count($rows), 'ausgewertet' => 0,
+             'partien' => (int)($pr['n'] ?? 0), 'offen' => (int)($pr['offen'] ?? 0)];
+    foreach ($rows as $r) {
+        $tid = (int)$r['tipper_id'];
+        if (!isset($einzel[$tid])) {
+            $einzel[$tid] = ['tipper_id' => $tid, 'nickname' => $r['nickname'], 'team_id' => $r['team_id'] !== null ? (int)$r['team_id'] : null,
+                             'team_name' => $r['team_name'], 'punkte' => 0, 'tipps' => 0, 'ausgewertet' => 0,
+                             'exakt' => 0, 'joker' => 0, 'joker_bonus' => 0];
+        }
+        $e = &$einzel[$tid];
+        $e['tipps']++;
+        if ((int)$r['ist_joker'] === 1) { $e['joker']++; }
+        if ($r['h_tore'] !== null && $r['g_tore'] !== null) {
+            $h = (int)$r['tipp_heim']; $g = (int)$r['tipp_gast'];
+            $eh = (int)$r['h_tore'];   $eg = (int)$r['g_tore'];
+            $joker = (int)$r['ist_joker'] === 1;
+            $pkt = calculateTippPunkte($h, $g, $eh, $eg, $joker);
+            $e['punkte'] += $pkt;
+            $e['ausgewertet']++;
+            $kopf['ausgewertet']++;
+            if ($joker) { $e['joker_bonus'] += $pkt - calculateTippPunkte($h, $g, $eh, $eg, false); }
+            if ($h === $eh && $g === $eg) { $e['exakt']++; }
+        }
+        unset($e);
+    }
+    $kopf['tipper'] = count($einzel);
+
+    $einzelListe = array_values($einzel);
+    usort($einzelListe, static fn($a, $b) => [$b['punkte'], $b['exakt'], $a['nickname']] <=> [$a['punkte'], $a['exakt'], $b['nickname']]);
+
+    $teams = [];
+    foreach ($einzelListe as $e) {
+        if ($e['team_id'] === null) { continue; }
+        $k = $e['team_id'];
+        if (!isset($teams[$k])) { $teams[$k] = ['team_id' => $k, 'name' => (string)$e['team_name'], 'summe' => 0, 'tipper' => 0, 'avg' => 0.0]; }
+        $teams[$k]['summe'] += $e['punkte'];
+        $teams[$k]['tipper']++;
+    }
+    foreach ($teams as &$t) { $t['avg'] = $t['tipper'] > 0 ? $t['summe'] / $t['tipper'] : 0.0; }
+    unset($t);
+    $teamListe = array_values($teams);
+    $key = $teamSort === 'summe' ? 'summe' : 'avg';
+    usort($teamListe, static fn($a, $b) => [$b[$key], $b['summe'], $a['name']] <=> [$a[$key], $a['summe'], $b['name']]);
+
+    return ['kopf' => $kopf, 'einzel' => $einzelListe, 'teams' => $teamListe];
 }

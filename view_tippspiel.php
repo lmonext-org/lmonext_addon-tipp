@@ -2,7 +2,7 @@
 /**
  * Project: LMOnext
  * Filename: addon/tipp/view_tippspiel.php
- * Fileversion: 1.4.1
+ * Fileversion: 1.5.0
  *
  * PHP version 8.2
  *
@@ -50,7 +50,106 @@ $tippTabs = [
 // ═══════════════════════════════════════════════════════════════════════
 if ($tippTab === 'auswertung') { ?>
   <h2 style="margin-bottom:8px"><?= h(t('tipp_tab_auswertung')) ?></h2>
-  <p style="color:var(--muted);font-size:.9rem"><?= h(t('tipp_placeholder_text_auswertung')) ?></p>
+<?php
+    $awLigen = getTippbareLigenKandidaten();
+    if (empty($awLigen)) { ?>
+  <p style="color:var(--muted);font-size:.9rem"><?= h(t('tipp_aw_keine_liga')) ?></p>
+<?php } else {
+        $awLigaIds = array_map(static fn($l) => (int)$l['id'], $awLigen);
+        $awLiga = (int)($_GET['liga'] ?? $awLigaIds[0]);
+        if (!in_array($awLiga, $awLigaIds, true)) { $awLiga = $awLigaIds[0]; }
+        $awSpieltage = adminTippGetSpieltage($awLiga);
+        $awSt = (int)($_GET['spieltag'] ?? 0);
+        $awSort = (($_GET['teamsort'] ?? 'avg') === 'summe') ? 'summe' : 'avg';
+        $aw = adminTippAuswertung($awLiga, $awSt, $awSort);
+        $awK = $aw['kopf'];
+        $awTh = 'padding:6px 10px;font-size:.78rem;color:var(--muted);border-bottom:1px solid var(--border)';
+        $awTd = 'padding:6px 10px;font-size:.87rem;border-bottom:1px solid var(--border)';
+        ?>
+  <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+    <input type="hidden" name="action" value="tippspiel">
+    <input type="hidden" name="tab" value="auswertung">
+    <select name="liga" style="<?= $selSt ?>" onchange="this.form.spieltag.value=0;this.form.submit()">
+<?php foreach ($awLigen as $l) { ?>
+      <option value="<?= (int)$l['id'] ?>"<?= (int)$l['id'] === $awLiga ? ' selected' : '' ?>><?= h($l['name']) ?></option>
+<?php } ?>
+    </select>
+    <select name="spieltag" style="<?= $selSt ?>" onchange="this.form.submit()">
+      <option value="0"><?= h(t('tipp_aw_alle_spieltage')) ?></option>
+<?php foreach ($awSpieltage as $s) { ?>
+      <option value="<?= (int)$s['nummer'] ?>"<?= (int)$s['nummer'] === $awSt ? ' selected' : '' ?>><?= h(t('tipp_aw_spieltag_n', ['n' => (int)$s['nummer']])) ?></option>
+<?php } ?>
+    </select>
+  </form>
+
+  <div style="display:flex;gap:22px;flex-wrap:wrap;margin-bottom:16px;font-size:.87rem">
+    <div><strong><?= (int)$awK['tipper'] ?></strong> <span style="color:var(--muted)"><?= h(t('tipp_aw_kpi_tipper')) ?></span></div>
+    <div><strong><?= (int)$awK['tipps'] ?></strong> <span style="color:var(--muted)"><?= h(t('tipp_aw_kpi_tipps')) ?></span></div>
+    <div><strong><?= (int)$awK['ausgewertet'] ?></strong> <span style="color:var(--muted)"><?= h(t('tipp_aw_kpi_ausgewertet')) ?></span></div>
+    <div><strong><?= (int)$awK['offen'] ?></strong> <span style="color:var(--muted)"><?= h(t('tipp_aw_kpi_offen', ['n' => (int)$awK['partien']])) ?></span></div>
+  </div>
+
+<?php if (empty($aw['einzel'])) { ?>
+  <p style="color:var(--muted);font-size:.9rem"><?= h(t('tipp_aw_keine_tipps')) ?></p>
+<?php } else { ?>
+  <h3 style="margin:6px 0 8px;font-size:.95rem"><?= h(t('tipp_aw_einzel')) ?></h3>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+    <thead><tr>
+      <th style="<?= $awTh ?>;text-align:right;width:48px">#</th>
+      <th style="<?= $awTh ?>;text-align:left"><?= h(t('tipp_aw_col_nick')) ?></th>
+      <th style="<?= $awTh ?>;text-align:left"><?= h(t('tipp_aw_col_team')) ?></th>
+      <th style="<?= $awTh ?>;text-align:right"><?= h(t('tipp_aw_col_punkte')) ?></th>
+      <th style="<?= $awTh ?>;text-align:right"><?= h(t('tipp_aw_col_tipps')) ?></th>
+      <th style="<?= $awTh ?>;text-align:right"><?= h(t('tipp_aw_col_exakt')) ?></th>
+      <th style="<?= $awTh ?>;text-align:right"><?= h(t('tipp_aw_col_joker')) ?></th>
+    </tr></thead>
+    <tbody>
+<?php $awRang = 0; $awVorher = null; $awZeile = 0;
+      foreach ($aw['einzel'] as $e) {
+          $awZeile++;
+          $key = $e['punkte'] . '/' . $e['exakt'];
+          if ($key !== $awVorher) { $awRang = $awZeile; $awVorher = $key; } ?>
+      <tr>
+        <td style="<?= $awTd ?>;text-align:right;color:var(--muted)"><?= $awRang ?></td>
+        <td style="<?= $awTd ?>"><?= h($e['nickname']) ?></td>
+        <td style="<?= $awTd ?>;color:var(--muted)"><?= h((string)($e['team_name'] ?? '–')) ?></td>
+        <td style="<?= $awTd ?>;text-align:right"><strong><?= (int)$e['punkte'] ?></strong></td>
+        <td style="<?= $awTd ?>;text-align:right"><?= (int)$e['tipps'] ?></td>
+        <td style="<?= $awTd ?>;text-align:right"><?= (int)$e['exakt'] ?></td>
+        <td style="<?= $awTd ?>;text-align:right"><?= (int)$e['joker'] ?><?= $e['joker_bonus'] > 0 ? ' (+' . (int)$e['joker_bonus'] . ')' : '' ?></td>
+      </tr>
+<?php } ?>
+    </tbody>
+  </table>
+
+  <h3 style="margin:6px 0 8px;font-size:.95rem"><?= h(t('tipp_aw_teams')) ?></h3>
+<?php if (empty($aw['teams'])) { ?>
+  <p style="color:var(--muted);font-size:.9rem"><?= h(t('tipp_aw_keine_teams')) ?></p>
+<?php } else {
+      $awUrl = static fn(string $sort) => '?action=tippspiel&tab=auswertung&liga=' . $awLiga . '&spieltag=' . $awSt . '&teamsort=' . $sort; ?>
+  <table style="width:100%;border-collapse:collapse">
+    <thead><tr>
+      <th style="<?= $awTh ?>;text-align:right;width:48px">#</th>
+      <th style="<?= $awTh ?>;text-align:left"><?= h(t('tipp_aw_col_team')) ?></th>
+      <th style="<?= $awTh ?>;text-align:right"><?= h(t('tipp_aw_col_tipper')) ?></th>
+      <th style="<?= $awTh ?>;text-align:right"><a href="<?= h($awUrl('summe')) ?>" style="color:inherit;<?= $awSort === 'summe' ? 'font-weight:700;text-decoration:underline' : '' ?>"><?= h(t('tipp_aw_col_summe')) ?></a></th>
+      <th style="<?= $awTh ?>;text-align:right"><a href="<?= h($awUrl('avg')) ?>" style="color:inherit;<?= $awSort === 'avg' ? 'font-weight:700;text-decoration:underline' : '' ?>"><?= h(t('tipp_aw_col_avg')) ?></a></th>
+    </tr></thead>
+    <tbody>
+<?php foreach ($aw['teams'] as $i => $tm) { ?>
+      <tr>
+        <td style="<?= $awTd ?>;text-align:right;color:var(--muted)"><?= $i + 1 ?></td>
+        <td style="<?= $awTd ?>"><?= h($tm['name']) ?></td>
+        <td style="<?= $awTd ?>;text-align:right"><?= (int)$tm['tipper'] ?></td>
+        <td style="<?= $awTd ?>;text-align:right"><?= (int)$tm['summe'] ?></td>
+        <td style="<?= $awTd ?>;text-align:right"><strong><?= number_format((float)$tm['avg'], 2, ',', '') ?></strong></td>
+      </tr>
+<?php } ?>
+    </tbody>
+  </table>
+<?php } ?>
+<?php } ?>
+<?php } ?>
 
 <?php
 // ═══════════════════════════════════════════════════════════════════════
@@ -574,11 +673,11 @@ if ($tippTab === 'auswertung') { ?>
         <td <?= $tdL ?>>
           <select name="max_spieltage_voraus" style="<?= $selSt ?>">
 <?php foreach ([0, 1, 2, 3, 4, 5] as $stVal) { ?>
-            <option value="<?= $stVal ?>"<?= $ts('max_spieltage_voraus') === (string)$stVal ? ' selected' : '' ?>><?= $stVal ?></option>
+            <option value="<?= $stVal ?>"<?= $ts('max_spieltage_voraus') === (string)$stVal ? ' selected' : '' ?>><?= h($stVal === 0 ? t('tipp_voraus_aktuell') : t('tipp_voraus_aktuell_plus', ['n' => $stVal])) ?></option>
 <?php } ?>
             <option value="unbegrenzt"<?= $ts('max_spieltage_voraus', 'unbegrenzt') === 'unbegrenzt' ? ' selected' : '' ?>><?= h(t('tipp_unbegrenzt')) ?></option>
           </select>
-
+          <div style="font-size:.78rem;color:var(--muted);margin-top:4px"><?= h(t('tipp_voraus_hinweis')) ?></div>
         </td>
       </tr>
       <tr><td colspan="2" style="padding:10px 0"><hr style="border:none;border-top:1px solid var(--border)"></td></tr>

@@ -58,3 +58,25 @@ CHANGELOG.md des LMOnext-Kernprojekts unter den Abschnitten
   tippSpieltagFreigegeben() in frontend_tipp.php 0.11.0,
   view_tippspiel_frontend.php 1.20.3, neuer Sprachschlüssel
   tf_tipp_spieltag_gesperrt. Nachtragen durch den Admin bleibt unberührt.
+
+## Version 1.5.4
+
+- Verständlichere Beschriftung der Einstellung "max. Anzahl Spieltage im
+  Voraus tippen": statt 0-5 jetzt "aktueller Spieltag", "aktuell + 1" bis
+  "aktuell + 5" sowie "unbegrenzt", mit kurzem Hinweistext. Gespeicherte
+  Werte (0-5/unbegrenzt) und Verhalten bleiben unverändert, keine Migration
+  nötig. Neue Sprachschlüssel tipp_voraus_aktuell, tipp_voraus_aktuell_plus,
+  tipp_voraus_hinweis; view_tippspiel.php.
+
+## Version 1.6.0
+
+- Neu: Admin-Tab "Auswertung" (bisher nur ein Platzhaltertext) zeigt jetzt
+  Liga-/Spieltag-Auswahl, eine Kopfzeile (Tipper, abgegebene und
+  ausgewertete Tipps, offene Spiele), die Einzelwertung (Rang, Nickname,
+  Team, Punkte, Tipps, exakte Treffer, Joker inkl. Bonuspunkte) sowie die
+  Teamwertung (Summe und Durchschnitt pro Tipper, per Klick auf die
+  Spaltenüberschrift sortierbar, Standard: Durchschnitt). Alles live aus
+  den Rohdaten berechnet. Neue Funktion adminTippAuswertung() in
+  tipp_lib.php; calculateTippPunkte() dorthin verschoben (gemeinsam für
+  Frontend und Admin, Verhalten unverändert). view_tippspiel.php,
+  frontend_tipp.php, lang/de.php, lang/en.php.

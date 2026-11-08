@@ -2,7 +2,7 @@
 /**
  * Project: LMOnext
  * Filename: addon/tipp/frontend_tipp.php
- * Fileversion: 0.11.0
+ * Fileversion: 0.12.0
  *
  * PHP version 8.2
  *
@@ -771,53 +771,6 @@ function tippGetTipperStatistik(int $ligaId, array $allSpieltage, int $tipperId)
         'spieltagsplatzierung_verlauf' => $spieltagsplatzierungVerlauf,
         'vergleich_spieltagssieger'    => $vergleichSpieltagssieger,
     ];
-}
-
-function calculateTippPunkte(int $tippHeim, int $tippGast, ?int $ergHeim, ?int $ergGast, bool $istJoker) : int
-{
-    if ($ergHeim === null || $ergGast === null) {
-        return 0; // Spiel noch nicht ausgewertet
-    }
-
-    $ergTendenz  = $ergHeim <=> $ergGast;   // -1 Auswärtssieg, 0 Unentschieden, 1 Heimsieg
-    $tippTendenz = $tippHeim <=> $tippGast;
-
-    $punkte = 0;
-
-    if ($tippHeim === $ergHeim && $tippGast === $ergGast) {
-        $punkte = (int)getTippSetting('pkt_ergebnis', '4');
-        if ($ergTendenz === 0) {
-            $punkte += (int)getTippSetting('pkt_unentschieden_bonus', '1');
-        }
-    } elseif ($tippTendenz === $ergTendenz) {
-        $tordiffGleich = ($tippHeim - $tippGast) === ($ergHeim - $ergGast);
-        if ($ergTendenz === 0) {
-            // Unentschieden-Tendenz richtig, aber nicht exaktes Ergebnis
-            $regel = getTippSetting('pkt_unentschieden_regel', 'nur_tendenz');
-            $punkte = (int)getTippSetting('pkt_tendenz', '2');
-            if ($regel === 'tendenz_plus_toranzahl' && ($tippHeim === $ergHeim || $tippGast === $ergGast)) {
-                $punkte += (int)getTippSetting('pkt_toranzahl', '1');
-            }
-        } elseif ($tordiffGleich) {
-            $punkte = (int)getTippSetting('pkt_tendenz_tordiff', '3');
-        } else {
-            $punkte = (int)getTippSetting('pkt_tendenz', '2');
-            $regel = getTippSetting('pkt_tendenz_toranzahl_regel', 'addieren');
-            if ($regel === 'addieren' && ($tippHeim === $ergHeim || $tippGast === $ergGast)) {
-                $punkte += (int)getTippSetting('pkt_toranzahl', '1');
-            }
-        }
-    } elseif ($tippHeim === $ergHeim || $tippGast === $ergGast) {
-        // Seitengetreuer Vergleich - siehe Projekt-Historie (1:2 bei 2:1 zählt NICHT)
-        $punkte = (int)getTippSetting('pkt_toranzahl', '1');
-    }
-
-    if ($istJoker && $punkte > 0) {
-        $multiplikator = (float)getTippSetting('joker_multiplikator', '2');
-        $punkte = (int)round($punkte * $multiplikator);
-    }
-
-    return $punkte;
 }
 
 /**
