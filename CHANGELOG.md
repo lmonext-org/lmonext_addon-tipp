@@ -8,42 +8,27 @@ Die vollständige Entwicklungshistorie bis zur Extraktion steht im
 CHANGELOG.md des LMOnext-Kernprojekts unter den Abschnitten
 `addon/tipp/*`.
 
-## Version 1.5.0
+## Version 1.6.0
 
-- Sprachdateien lang/de.php + lang/en.php neu hinzugefügt: enthalten jetzt
-  alle Tippspiel-Sprachschlüssel (nav_tippspiel, 150× tipp_* für den
-  Admin-Bereich, 193× tf_tipp_* für das Frontend), zuvor im LMOnext-Core
-  verteilt auf lang/admin/{de,en}.php und lang/frontend/{de,en}.php. Werden
-  von AddonManager::loadLanguages() geladen und über
-  registerAddonTranslations() automatisch in t()/tf() eingemischt
-  (Core-Strings haben bei Namenskollisionen Vorrang).
+- Neu: Admin-Tab "Auswertung" (bisher nur ein Platzhaltertext) zeigt jetzt
+  Liga-/Spieltag-Auswahl, eine Kopfzeile (Tipper, abgegebene und
+  ausgewertete Tipps, offene Spiele), die Einzelwertung (Rang, Nickname,
+  Team, Punkte, Tipps, exakte Treffer, Joker inkl. Bonuspunkte) sowie die
+  Teamwertung (Summe und Durchschnitt pro Tipper, per Klick auf die
+  Spaltenüberschrift sortierbar, Standard: Durchschnitt). Alles live aus
+  den Rohdaten berechnet. Neue Funktion adminTippAuswertung() in
+  tipp_lib.php; calculateTippPunkte() dorthin verschoben (gemeinsam für
+  Frontend und Admin, Verhalten unverändert). view_tippspiel.php,
+  frontend_tipp.php, lang/de.php, lang/en.php.
 
-## Version 1.4.1
+## Version 1.5.4
 
-- Als eigenständiges addon.json-Paket verpackt (Templates/Sprachdateien
-  jetzt lokal im Addon statt zentral im Core), installierbar über
-  Administrator → Addons.
-
-## min_core_version-Korrektur
-
-- min_core_version von "1.4.0" auf "1.9.0" korrigiert (Copy-Paste-Rest aus
-  einer älteren internen Versionierung, faktisch wirkungslos, da niedriger
-  als jede real existierende LMOnext-Version - AddonManager konnte damit nie
-  eine zu alte Core-Version blockieren). "1.9.0" ist die tatsächliche
-  LMOnext-Core-Version, ab der der Addon-Manager überhaupt existiert.
-
-## Version 1.5.2
-
-- Bugfix: "db_tables" in addon.json korrigiert - die bisherige Deklaration
-  ("lmo_tipp_tipper", "lmo_tipp_tipps", "lmo_tipp_settings") stimmte weder
-  in der Benennung noch vollständig mit den tatsächlich vom Addon
-  angelegten Tabellen überein (echte Namen: tipp_user, tipp_team,
-  tipp_liga_freigabe, tipp_abo, tipp_tipp, tipp_settings - OHNE
-  DB-Präfix, der wird vom neuen "Daten löschen"-Feature im Addon-Manager
-  zur Laufzeit selbst ergänzt, siehe Core-CHANGELOG.md
-  src/Addon/AddonManager.php 1.4.0). Betraf bisher keine sichtbare
-  Funktion, wäre aber beim neuen Purge-Feature auf einen unvollständigen/
-  falschen Cleanup hinausgelaufen.
+- Verständlichere Beschriftung der Einstellung "max. Anzahl Spieltage im
+  Voraus tippen": statt 0-5 jetzt "aktueller Spieltag", "aktuell + 1" bis
+  "aktuell + 5" sowie "unbegrenzt", mit kurzem Hinweistext. Gespeicherte
+  Werte (0-5/unbegrenzt) und Verhalten bleiben unverändert, keine Migration
+  nötig. Neue Sprachschlüssel tipp_voraus_aktuell, tipp_voraus_aktuell_plus,
+  tipp_voraus_hinweis; view_tippspiel.php.
 
 ## Version 1.5.3
 
@@ -59,24 +44,39 @@ CHANGELOG.md des LMOnext-Kernprojekts unter den Abschnitten
   view_tippspiel_frontend.php 1.20.3, neuer Sprachschlüssel
   tf_tipp_spieltag_gesperrt. Nachtragen durch den Admin bleibt unberührt.
 
-## Version 1.5.4
+## Version 1.5.2
 
-- Verständlichere Beschriftung der Einstellung "max. Anzahl Spieltage im
-  Voraus tippen": statt 0-5 jetzt "aktueller Spieltag", "aktuell + 1" bis
-  "aktuell + 5" sowie "unbegrenzt", mit kurzem Hinweistext. Gespeicherte
-  Werte (0-5/unbegrenzt) und Verhalten bleiben unverändert, keine Migration
-  nötig. Neue Sprachschlüssel tipp_voraus_aktuell, tipp_voraus_aktuell_plus,
-  tipp_voraus_hinweis; view_tippspiel.php.
+- Bugfix: "db_tables" in addon.json korrigiert - die bisherige Deklaration
+  ("lmo_tipp_tipper", "lmo_tipp_tipps", "lmo_tipp_settings") stimmte weder
+  in der Benennung noch vollständig mit den tatsächlich vom Addon
+  angelegten Tabellen überein (echte Namen: tipp_user, tipp_team,
+  tipp_liga_freigabe, tipp_abo, tipp_tipp, tipp_settings - OHNE
+  DB-Präfix, der wird vom neuen "Daten löschen"-Feature im Addon-Manager
+  zur Laufzeit selbst ergänzt, siehe Core-CHANGELOG.md
+  src/Addon/AddonManager.php 1.4.0). Betraf bisher keine sichtbare
+  Funktion, wäre aber beim neuen Purge-Feature auf einen unvollständigen/
+  falschen Cleanup hinausgelaufen.
 
-## Version 1.6.0
+## min_core_version-Korrektur
 
-- Neu: Admin-Tab "Auswertung" (bisher nur ein Platzhaltertext) zeigt jetzt
-  Liga-/Spieltag-Auswahl, eine Kopfzeile (Tipper, abgegebene und
-  ausgewertete Tipps, offene Spiele), die Einzelwertung (Rang, Nickname,
-  Team, Punkte, Tipps, exakte Treffer, Joker inkl. Bonuspunkte) sowie die
-  Teamwertung (Summe und Durchschnitt pro Tipper, per Klick auf die
-  Spaltenüberschrift sortierbar, Standard: Durchschnitt). Alles live aus
-  den Rohdaten berechnet. Neue Funktion adminTippAuswertung() in
-  tipp_lib.php; calculateTippPunkte() dorthin verschoben (gemeinsam für
-  Frontend und Admin, Verhalten unverändert). view_tippspiel.php,
-  frontend_tipp.php, lang/de.php, lang/en.php.
+- min_core_version von "1.4.0" auf "1.9.0" korrigiert (Copy-Paste-Rest aus
+  einer älteren internen Versionierung, faktisch wirkungslos, da niedriger
+  als jede real existierende LMOnext-Version - AddonManager konnte damit nie
+  eine zu alte Core-Version blockieren). "1.9.0" ist die tatsächliche
+  LMOnext-Core-Version, ab der der Addon-Manager überhaupt existiert.
+
+## Version 1.5.0
+
+- Sprachdateien lang/de.php + lang/en.php neu hinzugefügt: enthalten jetzt
+  alle Tippspiel-Sprachschlüssel (nav_tippspiel, 150× tipp_* für den
+  Admin-Bereich, 193× tf_tipp_* für das Frontend), zuvor im LMOnext-Core
+  verteilt auf lang/admin/{de,en}.php und lang/frontend/{de,en}.php. Werden
+  von AddonManager::loadLanguages() geladen und über
+  registerAddonTranslations() automatisch in t()/tf() eingemischt
+  (Core-Strings haben bei Namenskollisionen Vorrang).
+
+## Version 1.4.1
+
+- Als eigenständiges addon.json-Paket verpackt (Templates/Sprachdateien
+  jetzt lokal im Addon statt zentral im Core), installierbar über
+  Administrator → Addons.
