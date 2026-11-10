@@ -7,7 +7,7 @@
     },
     "author": "Dietmar Kersting, Torsten Hofmann",
     "license": "GPL-3.0-only",
-    "homepage": "https://github.com/henshingly/addon-tipp",
+    "homepage": "https://github.com/lmonext-org/addon-tipp",
     "min_core_version": "1.9.0",
     "type": "both",
     "admin_actions": [
